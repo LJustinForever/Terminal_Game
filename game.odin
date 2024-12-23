@@ -10,10 +10,8 @@ Game :: struct{
     window: ^SDL.Window,
     renderer: ^SDL.Renderer,
     event: SDL.Event,
-    chars: []CharacterSprite //holds all characters from bmp
+    entity_manager: EntityManager
 }
-
-entity_manager := EntityManager {}
 
 initialise :: proc(g: ^Game) -> bool {
     if SDL.Init(SDL_FLAGS) != 0 {
@@ -41,8 +39,7 @@ initialise :: proc(g: ^Game) -> bool {
     }
 
     g.renderer = renderer
-    entity_manager.renderer = renderer
-    entity_manager.entities = make([dynamic]Entity, 0, 30)
+    g.entity_manager.entities = make([dynamic]Entity, 0, 30)
 
     bmp_texture := load_chars_from_BMP(g.renderer)
     if bmp_texture == nil  {
@@ -50,34 +47,17 @@ initialise :: proc(g: ^Game) -> bool {
         return false
     }
 
-    g.chars = extract_chars_from_texture(g.renderer, bmp_texture, CHAR_WIDTH, CHAR_HEIGHT)
+    g.entity_manager.chars = extract_chars_from_texture(g.renderer, bmp_texture, CHAR_WIDTH, CHAR_HEIGHT)
     SDL.DestroyTexture(bmp_texture)
-    if g.chars == nil{
+    if g.entity_manager.chars == nil{
         SDL.Log("Error extracting chars from texture: %s", SDL.GetError())
         return false
     }
 
-    char_texture := create_texture_from_sprite(g.renderer, &g.chars[1], ColorsEnum.WHITE)
-    if char_texture == nil{
-        SDL.Log("Error creating texture from sprite: %s", SDL.GetError())
+    if !create_entity(g.renderer, &g.entity_manager, "main", 1, ColorsEnum.WHITE, Position{x=SCREEN_WIDTH/2, y=SCREEN_HEIGHT/2}){
+        SDL.Log("Error unable to create entity: %s", SDL.GetError())
         return false
     }
-
-    smiley_char := Entity {
-        id = "main",
-        texture = char_texture,
-        position = Position {
-            x = SCREEN_WIDTH/2,
-            y = SCREEN_HEIGHT/2
-        },
-        size = Size {
-            w = g.chars[1].width * CHAR_SCALE,
-            h = g.chars[1].height * CHAR_SCALE
-        },
-        is_active = true
-    }
-
-    append(&entity_manager.entities, smiley_char)
 
     return true
 }
@@ -86,13 +66,28 @@ game_cleanup :: proc(g: ^Game) {
     if g != nil {
         if g.renderer != nil do SDL.DestroyRenderer(g.renderer)
         if g.window != nil do SDL.DestroyWindow(g.window)
-        if g.chars != nil do delete(g.chars)
+        if &g.entity_manager != nil {
+            delete(g.entity_manager.chars)
+            for &entity in g.entity_manager.entities{
+                if entity.texture != nil{
+                    SDL.DestroyTexture(entity.texture)
+                }
+            }
+            delete(g.entity_manager.entities)
+        }
     }
     SDL.Quit()
 }
 
 game_run :: proc(g: ^Game){
     for{
+        SDL.RenderClear(g.renderer)
+        //Render objects
+        //SDL.RenderCopy(g.renderer, char_texture, nil, &dst_rect)
+        render_entities(g.renderer, g.entity_manager)
+        SDL.RenderPresent(g.renderer)
+        SDL.Delay(16)
+
         for SDL.PollEvent(&g.event){
             #partial switch g.event.type {
                 case .QUIT:
@@ -100,28 +95,21 @@ game_run :: proc(g: ^Game){
                 case .KEYDOWN:
                     #partial switch g.event.key.keysym.scancode {
                     case .UP:
-                        move_entity("main", DirectionEnum.UP)
+                        move_entity(&g.entity_manager, "main", DirectionEnum.UP)
                         break
                     case .RIGHT:
-                        move_entity("main", DirectionEnum.RIGHT)
+                        move_entity(&g.entity_manager, "main", DirectionEnum.RIGHT)
                         break
                     case .DOWN:
-                        move_entity("main", DirectionEnum.DOWN)
+                        move_entity(&g.entity_manager, "main", DirectionEnum.DOWN)
                         break
                     case .LEFT:
-                        move_entity("main", DirectionEnum.LEFT)
+                        move_entity(&g.entity_manager, "main", DirectionEnum.LEFT)
                         break
                     case .ESCAPE:
                         return
                     }
             }
         }
-
-        SDL.RenderClear(g.renderer)
-        //Render objects
-        //SDL.RenderCopy(g.renderer, char_texture, nil, &dst_rect)
-        render_entities(&entity_manager)
-        SDL.RenderPresent(g.renderer)
-        SDL.Delay(16)
     }
 }

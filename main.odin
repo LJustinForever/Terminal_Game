@@ -17,11 +17,11 @@ SCREEN_HEIGHT :: 600
 main :: proc() {
     game: Game
     defer os.exit(0)
+    defer game_cleanup(&game)
 
     if !initialise(&game){
         return
     }
 
-    game_run(&game)
-    game_cleanup(&game)
+    game_run(&game) 
 }

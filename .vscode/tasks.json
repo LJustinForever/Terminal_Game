@@ -10,12 +10,12 @@
             "args": [
                 "/C",
                 "if not exist .\\build mkdir .\\build"
-            ]
+            ] 
         },
         {
             "label": "build",
             "type": "shell",
-            "command": "odin build . -debug -out:build/debug.exe",
+            "command": "odin build . -debug -out:build/debug.exe -o:none",
             "group": "build"
         },
         {
