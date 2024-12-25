@@ -14,7 +14,7 @@ CharacterSprite :: struct  {
 load_chars_from_BMP :: proc(renderer: ^SDL.Renderer) -> (^SDL.Texture) {
     ascii_surface := SDL.LoadBMP("ascii.bmp")
     if ODIN_DEBUG {
-        ascii_surface = SDL.LoadBMP("ascii.bmp")        
+        ascii_surface = SDL.LoadBMP("ascii.bmp")
     }
     if ascii_surface == nil {
         return nil

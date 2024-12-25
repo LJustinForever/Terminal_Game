@@ -10,7 +10,8 @@ Game :: struct{
     window: ^SDL.Window,
     renderer: ^SDL.Renderer,
     event: SDL.Event,
-    entity_manager: EntityManager
+    entity_manager: EntityManager,
+    tilemap: TileMap
 }
 
 initialise :: proc(g: ^Game) -> bool {
@@ -54,6 +55,20 @@ initialise :: proc(g: ^Game) -> bool {
         return false
     }
 
+    //get tiles ints
+    source_tilemap, ok := get_source_tilemap_from_file("tilemap.txt").?
+    if !ok {
+        SDL.Log("Error unable to find source tilemap")
+        return false
+    }
+    defer delete(source_tilemap)
+
+    g.tilemap = create_tilemap(g.renderer, source_tilemap, g.entity_manager.chars, ColorsEnum.WHITE)
+    if g.tilemap == nil {
+        SDL.Log("Error unable to create tilemap")
+        return false
+    }
+
     if !create_entity(g.renderer, &g.entity_manager, "main", 1, ColorsEnum.WHITE, Position{x=SCREEN_WIDTH/2, y=SCREEN_HEIGHT/2}){
         SDL.Log("Error unable to create entity: %s", SDL.GetError())
         return false
@@ -75,6 +90,7 @@ game_cleanup :: proc(g: ^Game) {
             }
             delete(g.entity_manager.entities)
         }
+        if g.tilemap != nil do delete(g.tilemap)
     }
     SDL.Quit()
 }
@@ -85,8 +101,9 @@ game_run :: proc(g: ^Game){
         //Render objects
         //SDL.RenderCopy(g.renderer, char_texture, nil, &dst_rect)
         render_entities(g.renderer, g.entity_manager)
+        render_tilemap(g.renderer, g.tilemap)
         SDL.RenderPresent(g.renderer)
-        SDL.Delay(16)
+        SDL.Delay(6000)
 
         for SDL.PollEvent(&g.event){
             #partial switch g.event.type {
